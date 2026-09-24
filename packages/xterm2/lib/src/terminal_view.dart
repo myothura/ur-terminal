@@ -244,6 +244,37 @@ class TerminalViewState extends State<TerminalView> {
 
   String? _composingText;
 
+  // Ur.Terminal: text committed by an input method stays visible as the
+  // composing overlay until the remote echo arrives, so a word does not
+  // vanish for a network round trip after pressing Space.
+  String? _pendingEcho;
+  Timer? _pendingEchoTimer;
+  Terminal? _pendingEchoTerminal;
+
+  void _holdPendingEcho(String text) {
+    _clearPendingEcho(rebuild: false);
+    _pendingEcho = text;
+    _pendingEchoTerminal = widget.terminal..addListener(_onEchoArrived);
+    _pendingEchoTimer =
+        Timer(const Duration(milliseconds: 600), _clearPendingEcho);
+    setState(() => _composingText = text);
+  }
+
+  void _onEchoArrived() => _clearPendingEcho();
+
+  void _clearPendingEcho({bool rebuild = true}) {
+    if (_pendingEcho == null) return;
+    _pendingEchoTimer?.cancel();
+    _pendingEchoTimer = null;
+    _pendingEchoTerminal?.removeListener(_onEchoArrived);
+    _pendingEchoTerminal = null;
+    final wasShowing = _composingText == _pendingEcho;
+    _pendingEcho = null;
+    if (rebuild && wasShowing && mounted) {
+      setState(() => _composingText = null);
+    }
+  }
+
   int? _hoveredHyperlinkId;
 
   var _hyperlinkModifierPressed = false;
@@ -329,6 +360,7 @@ class TerminalViewState extends State<TerminalView> {
 
   @override
   void dispose() {
+    _clearPendingEcho(rebuild: false);
     _removeColorQuery(widget.terminal);
     _removeColorSchemeQuery(widget.terminal);
     _removeClipboardHandlers(widget.terminal);
@@ -656,6 +688,11 @@ class TerminalViewState extends State<TerminalView> {
     if (isKittyModifierKeyCharacter(text)) {
       return;
     }
+    if (text.runes.any((r) => r > 0x7F)) {
+      _holdPendingEcho(text);
+    } else {
+      _clearPendingEcho();
+    }
     final mappedKey = charToTerminalKey(text);
     if (mappedKey == null && text.runes.length != 1) {
       widget.terminal.textInput(text);
@@ -677,6 +714,10 @@ class TerminalViewState extends State<TerminalView> {
   }
 
   void _onComposing(String? text) {
+    // The input method clears its preedit right after committing; keep
+    // showing the committed text until the echo lands.
+    if (text == null && _pendingEcho != null) return;
+    if (text != null) _clearPendingEcho(rebuild: false);
     setState(() => _composingText = text);
   }
 
