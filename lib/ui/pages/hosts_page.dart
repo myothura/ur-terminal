@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
 import '../../core/ids.dart';
 import '../../data/models.dart';
 import '../../data/ssh_config_import.dart';
+import '../../data/termius_import.dart';
 import '../editors/host_editor.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -62,6 +65,10 @@ class _HostsPageState extends State<HostsPage> {
         'Imported ${report.hosts} hosts and ${report.keys} keys$warn');
   }
 
+  Future<void> _importTermius() async {
+    await importTermius(context);
+  }
+
   Future<void> _newGroup() async {
     final name = await AppState.I.connector.prompter
         .askText('New group', 'Group name', secret: false);
@@ -98,6 +105,8 @@ class _HostsPageState extends State<HostsPage> {
                         _newGroup),
                     menuItem('Import ~/.ssh/config', Icons.download_outlined,
                         _importConfig),
+                    menuItem('Import from Termius...', Icons.move_down,
+                        _importTermius),
                   ],
                   child: const Padding(
                     padding: EdgeInsets.all(8),
@@ -274,5 +283,28 @@ class _HostCard extends StatelessWidget {
         }, danger: true),
       ],
     );
+  }
+}
+
+/// Imports hosts.json produced by termius-local-export.
+Future<void> importTermius(BuildContext context) async {
+  final app = AppState.I;
+  var path = TermiusImporter.defaultPath;
+  if (!await File(path).exists()) {
+    final picked = await app.connector.prompter.askText(
+      'Import from Termius',
+      'Path to hosts.json from termius-local-export\n'
+          '(default ~/termius-export/hosts.json was not found)',
+      secret: false,
+    );
+    if (picked == null || picked.trim().isEmpty) return;
+    path = picked.trim();
+  }
+  final r = await TermiusImporter(app.vault).importFile(path);
+  if (!context.mounted) return;
+  final skipped = r.warnings.isEmpty ? '' : '  (${r.warnings.length} skipped)';
+  toast(context, 'Imported ${r.hosts} hosts and ${r.keys} keys from Termius$skipped');
+  for (final w in r.warnings) {
+    debugPrint('termius import: $w');
   }
 }

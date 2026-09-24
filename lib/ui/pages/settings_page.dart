@@ -5,6 +5,7 @@ import '../../core/vault_crypto.dart';
 import '../../data/prefs.dart';
 import '../../data/ssh_config_import.dart';
 import '../theme.dart';
+import 'hosts_page.dart';
 import '../widgets.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -145,6 +146,16 @@ class SettingsPage extends StatelessWidget {
                         'Imported ${r.hosts} hosts and ${r.keys} keys');
                   }
                 },
+                child: const Text('Import'),
+              ),
+            ),
+            _Row(
+              icon: Icons.move_down,
+              title: 'Import from Termius',
+              subtitle: 'hosts.json from termius-local-export (hosts, ports, '
+                  'users, passwords, keys, groups)',
+              action: OutlinedButton(
+                onPressed: () => importTermius(context),
                 child: const Text('Import'),
               ),
             ),
