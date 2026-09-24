@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyLists-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Not sandboxed: needed for the local shell (PTY), reading ~/.ssh and Sparkle updates.
+	     Distributed with Developer ID + notarization instead of the Mac App Store. -->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>

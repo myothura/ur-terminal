@@ -1,0 +1,40 @@
+name: ur_terminal
+description: "Ur.Terminal - open source SSH client for macOS with port forwarding, keychain, snippets and encrypted sync."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # SSH / SFTP / port forwarding (pure Dart)
+  dartssh2: ^4.1.0
+
+  # Terminal emulator (maintained fork of xterm.dart), pinned to a reviewed commit
+  xterm2:
+    git:
+      url: https://github.com/SoFluffyOS/xterm2.git
+      ref: 7a4add3da8a163c9adff2b0fd554f3dfe6d1d9e4
+
+  # Local shell PTY (maintained fork of flutter_pty), pinned to a reviewed commit
+  flutter_pty2:
+    git:
+      url: https://github.com/SoFluffyOS/flutter_pty2.git
+      ref: 13ce4b03714dbed6868a051d3ff6779ff7db0506
+
+  # Argon2id + XChaCha20-Poly1305 + HMAC (vault encryption, TOTP)
+  cryptography: ^2.7.0
+
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
