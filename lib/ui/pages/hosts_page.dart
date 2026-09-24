@@ -293,8 +293,8 @@ Future<void> importTermius(BuildContext context) async {
   if (!await File(path).exists()) {
     final picked = await app.connector.prompter.askText(
       'Import from Termius',
-      'Path to hosts.json from termius-local-export\n'
-          '(default ~/termius-export/hosts.json was not found)',
+      'Path to decrypted-indexeddb.json or hosts.json from '
+          'termius-local-export\n(nothing found in ~/termius-export)',
       secret: false,
     );
     if (picked == null || picked.trim().isEmpty) return;
@@ -303,7 +303,7 @@ Future<void> importTermius(BuildContext context) async {
   final r = await TermiusImporter(app.vault).importFile(path);
   if (!context.mounted) return;
   final skipped = r.warnings.isEmpty ? '' : '  (${r.warnings.length} skipped)';
-  toast(context, 'Imported ${r.hosts} hosts and ${r.keys} keys from Termius$skipped');
+  toast(context, 'Imported from Termius: ${r.summary}$skipped');
   for (final w in r.warnings) {
     debugPrint('termius import: $w');
   }

@@ -5,6 +5,7 @@ import '../core/ids.dart';
 import '../core/keygen.dart';
 import 'models.dart';
 import 'ssh_config_import.dart';
+import 'termius_db_import.dart';
 import 'vault.dart';
 
 /// Imports the `hosts.json` written by termius-local-export
@@ -17,8 +18,15 @@ class TermiusImporter {
 
   final Vault vault;
 
-  static String get defaultPath =>
-      '${Platform.environment['HOME'] ?? ''}/termius-export/hosts.json';
+  static String get _dir =>
+      '${Platform.environment['HOME'] ?? ''}/termius-export';
+
+  /// Prefers the full decrypted dump (hosts, keys, tags, snippets, tunnels,
+  /// known hosts); falls back to the tool's normalized hosts.json.
+  static String get defaultPath {
+    final dump = File('$_dir/decrypted-indexeddb.json');
+    return dump.existsSync() ? dump.path : '$_dir/hosts.json';
+  }
 
   Future<ImportReport> importFile(String path) async {
     final report = ImportReport();
@@ -29,6 +37,10 @@ class TermiusImporter {
     }
 
     final decoded = jsonDecode(await file.readAsString());
+    if (TermiusDbImporter.looksLikeDump(decoded)) {
+      return TermiusDbImporter(vault)
+          .importDump((decoded as Map).cast<String, dynamic>());
+    }
     final List<dynamic> entries = switch (decoded) {
       {'hosts': final List<dynamic> h} => h,
       final List<dynamic> l => l,
@@ -80,7 +92,13 @@ class TermiusImporter {
       String? keyId;
       final keyPath = _s(e['identityFile']);
       if (keyPath != null) {
-        keyId = await _importKey(keyPath, keyIds, report);
+        // The export folder may have been moved: fall back to keys/<name>
+        // next to hosts.json.
+        var resolved = _expand(keyPath);
+        if (!await File(resolved).exists()) {
+          resolved = '${file.parent.path}/keys/${resolved.split('/').last}';
+        }
+        keyId = await _importKey(resolved, keyIds, report);
       }
 
       await vault.put(Host(

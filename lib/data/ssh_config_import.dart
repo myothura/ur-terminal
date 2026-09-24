@@ -8,6 +8,17 @@ import 'vault.dart';
 class ImportReport {
   int hosts = 0;
   int keys = 0;
+  int snippets = 0;
+  int forwards = 0;
+  int knownHosts = 0;
+
+  String get summary => [
+        '$hosts hosts',
+        '$keys keys',
+        if (snippets > 0) '$snippets snippets',
+        if (forwards > 0) '$forwards tunnels',
+        if (knownHosts > 0) '$knownHosts known hosts',
+      ].join(', ');
   final List<String> warnings = [];
 }
 
