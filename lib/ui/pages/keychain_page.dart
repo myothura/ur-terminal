@@ -212,7 +212,7 @@ class _KeyRow extends StatelessWidget {
     );
     if (host == null) return;
     final escaped = pub.replaceAll("'", r"'\''");
-    final cmd = "umask 077; mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && "
+    final cmd = 'umask 077; mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && '
         "(grep -qxF '$escaped' ~/.ssh/authorized_keys || "
         "echo '$escaped' >> ~/.ssh/authorized_keys)";
     try {

@@ -30,6 +30,9 @@ LOG=.cowork/setup.log
   sed -i '' 's/com\.goodbrother\.urTerminal/com.goodbrother.urterminal/g' ios/Runner.xcodeproj/project.pbxproj 2>/dev/null
   /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Ur.Terminal" ios/Runner/Info.plist 2>/dev/null
 
+  sed -i '' "s/platform :osx, '10.15'/platform :osx, '12.0'/" macos/Podfile 2>/dev/null
+  sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = 10.15;/MACOSX_DEPLOYMENT_TARGET = 12.0;/g' macos/Runner.xcodeproj/project.pbxproj
+
   echo "== flutter pub get"
   flutter pub get || exit 1
 

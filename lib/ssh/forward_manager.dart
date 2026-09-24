@@ -141,9 +141,8 @@ class ForwardManager extends ChangeNotifier {
     a._server = server;
     server.listen((socket) async {
       a._sockets.add(socket);
-      a
-        ..openConnections++
-        ..totalConnections++;
+      a.openConnections++;
+      a.totalConnections++;
       try {
         final channel =
             await conn.client.forwardLocal(rule.destHost, rule.destPort);
@@ -168,9 +167,8 @@ class ForwardManager extends ChangeNotifier {
     }
     a._remote = remote;
     remote.connections.listen((channel) async {
-      a
-        ..openConnections++
-        ..totalConnections++;
+      a.openConnections++;
+      a.totalConnections++;
       try {
         final socket = await Socket.connect(rule.destHost, rule.destPort,
             timeout: const Duration(seconds: 10));
