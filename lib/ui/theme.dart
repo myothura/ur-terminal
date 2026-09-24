@@ -4,15 +4,22 @@ import 'package:xterm2/xterm.dart';
 class AppColors {
   AppColors._();
 
-  static const bg = Color(0xFF0D1015);
-  static const sidebar = Color(0xFF10141A);
-  static const surface = Color(0xFF151A21);
-  static const surface2 = Color(0xFF1B212A);
-  static const surface3 = Color(0xFF222A35);
-  static const border = Color(0xFF262E3A);
-  static const text = Color(0xFFE6EAF0);
-  static const textMuted = Color(0xFF8C96A6);
-  static const textFaint = Color(0xFF5D6778);
+  // Neutral graphite, matching macOS Terminal's dark profile.
+  static const bg = Color(0xFF1E1E1E);
+  static const sidebar = Color(0xFF232323);
+  static const surface = Color(0xFF2A2A2A);
+  static const surface2 = Color(0xFF323232);
+  static const surface3 = Color(0xFF3B3B3B);
+  static const border = Color(0xFF3A3A3A);
+  static const text = Color(0xFFEDEDED);
+  static const textMuted = Color(0xFF9E9E9E);
+  static const textFaint = Color(0xFF6E6E6E);
+
+  // Translucent tints laid over the native window blur (glass).
+  static const glassChrome = Color(0x99202020);
+  static const glassSidebar = Color(0x8C1E1E1E);
+  static const glassPage = Color(0xD91E1E1E);
+  static const glassBorder = Color(0x40FFFFFF);
   static const accent = Color(0xFF3DDC97);
   static const accentDim = Color(0x333DDC97);
   static const danger = Color(0xFFF26D6D);
@@ -20,8 +27,16 @@ class AppColors {
   static const info = Color(0xFF6CA8FF);
 }
 
-const kMonoFont = 'Menlo';
-const kMonoFallback = ['SF Mono', 'Monaco', 'Courier New'];
+const kMonoFont = 'JetBrainsMono';
+/// Myanmar fonts that ship with macOS come right after the Latin mono fonts
+/// so Burmese text renders instead of tofu boxes.
+const kMonoFallback = [
+  'Menlo',
+  'Myanmar Sangam MN',
+  'Myanmar MN',
+  'Noto Sans Myanmar',
+  'Apple Color Emoji',
+];
 
 ThemeData buildTheme() {
   final scheme = ColorScheme.fromSeed(
@@ -45,7 +60,7 @@ ThemeData buildTheme() {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
-    scaffoldBackgroundColor: AppColors.bg,
+    scaffoldBackgroundColor: Colors.transparent,
     canvasColor: AppColors.surface,
     dividerColor: AppColors.border,
     splashFactory: NoSplash.splashFactory,
@@ -143,35 +158,36 @@ ThemeData buildTheme() {
   );
 }
 
+/// macOS Terminal.app palette (Basic profile, dark appearance).
 const terminalTheme = TerminalTheme(
-  cursor: Color(0xFF3DDC97),
-  selection: Color(0x553DDC97),
-  foreground: Color(0xFFD9DEE7),
-  background: Color(0xFF0D1015),
-  black: Color(0xFF1B212A),
-  red: Color(0xFFF26D6D),
-  green: Color(0xFF3DDC97),
-  yellow: Color(0xFFF5B85C),
-  blue: Color(0xFF6CA8FF),
-  magenta: Color(0xFFC792EA),
-  cyan: Color(0xFF5CCFE6),
-  white: Color(0xFFD9DEE7),
-  brightBlack: Color(0xFF5D6778),
-  brightRed: Color(0xFFFF8A8A),
-  brightGreen: Color(0xFF6EF0B5),
-  brightYellow: Color(0xFFFFD08A),
-  brightBlue: Color(0xFF94C0FF),
-  brightMagenta: Color(0xFFDDB4FF),
-  brightCyan: Color(0xFF8BE3F2),
-  brightWhite: Color(0xFFFFFFFF),
-  searchHitBackground: Color(0xFF5A4A1A),
+  cursor: Color(0xFFC7C7C7),
+  selection: Color(0x66B4D5FF),
+  foreground: Color(0xFFF2F2F2),
+  background: Color(0xFF1E1E1E),
+  black: Color(0xFF000000),
+  red: Color(0xFFC23621),
+  green: Color(0xFF25BC24),
+  yellow: Color(0xFFADAD27),
+  blue: Color(0xFF6A7EFF),
+  magenta: Color(0xFFD338D3),
+  cyan: Color(0xFF33BBC8),
+  white: Color(0xFFCBCCCD),
+  brightBlack: Color(0xFF818383),
+  brightRed: Color(0xFFFC391F),
+  brightGreen: Color(0xFF31E722),
+  brightYellow: Color(0xFFEAEC23),
+  brightBlue: Color(0xFF8C7BFF),
+  brightMagenta: Color(0xFFF935F8),
+  brightCyan: Color(0xFF14F0F0),
+  brightWhite: Color(0xFFE9EBEB),
+  searchHitBackground: Color(0xFF6B5A1E),
   searchHitBackgroundCurrent: Color(0xFFF5B85C),
-  searchHitForeground: Color(0xFF0D1015),
+  searchHitForeground: Color(0xFF1E1E1E),
 );
 
 const terminalStyle = TerminalStyle(
   fontSize: 13,
-  height: 1.25,
+  height: 1.35,
   fontFamily: kMonoFont,
   fontFamilyFallback: kMonoFallback,
 );

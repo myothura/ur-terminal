@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_state.dart';
+import '../data/models.dart';
 import '../ssh/terminal_session.dart';
 import 'command_palette.dart';
 import 'pages/forwards_page.dart';
@@ -13,6 +14,7 @@ import 'pages/snippets_page.dart';
 import 'terminal_pane.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'window_chrome.dart';
 
 /// App shortcuts. Checked both globally and inside terminals so the
 /// terminal never swallows them.
@@ -25,6 +27,8 @@ bool isAppShortcut(KeyEvent e) {
         key == LogicalKeyboardKey.keyW ||
         key == LogicalKeyboardKey.keyL ||
         key == LogicalKeyboardKey.keyN ||
+        key == LogicalKeyboardKey.equal ||
+        key == LogicalKeyboardKey.minus ||
         key == LogicalKeyboardKey.digit0 ||
         _digits.contains(key);
   }
@@ -89,6 +93,10 @@ class _HomeShellState extends State<HomeShell> {
     } else if (key == LogicalKeyboardKey.keyN) {
       app.showSection(Section.hosts);
       HostsPage.requestNew(context);
+    } else if (key == LogicalKeyboardKey.equal) {
+      app.zoomFont(1);
+    } else if (key == LogicalKeyboardKey.minus) {
+      app.zoomFont(-1);
     } else if (key == LogicalKeyboardKey.digit0) {
       app.showPages();
     } else {
@@ -100,42 +108,53 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: ListenableBuilder(
         listenable: app,
-        builder: (context, _) => Row(
-          children: [
-            const _Sidebar(),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: Column(
-                children: [
-                  const _TabStrip(),
-                  const Divider(height: 1),
-                  Expanded(child: _content()),
-                ],
+        builder: (context, _) {
+          final terminalMode = app.terminalActive;
+          final activeIndex =
+              app.sessions.indexWhere((s) => s.id == app.activeSessionId);
+          return Column(
+            children: [
+              _TitleBarTabs(app: app),
+              Expanded(
+                child: Row(
+                  children: [
+                    // Termius style: the vault sidebar gets out of the way
+                    // while a terminal is in front.
+                    if (!terminalMode) ...[
+                      _Sidebar(app: app),
+                      const VerticalDivider(width: 1),
+                    ],
+                    Expanded(
+                      child: IndexedStack(
+                        index: activeIndex + 1,
+                        sizing: StackFit.expand,
+                        children: [
+                          ColoredBox(
+                            color: AppColors.glassPage,
+                            child: KeyedSubtree(
+                              key: ValueKey(app.section),
+                              child: _page(app.section),
+                            ),
+                          ),
+                          for (final s in app.sessions)
+                            TerminalPane(
+                              key: ValueKey(s.id),
+                              session: s,
+                              active: s.id == app.activeSessionId,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
-    );
-  }
-
-  Widget _content() {
-    final activeIndex =
-        app.sessions.indexWhere((s) => s.id == app.activeSessionId);
-    return IndexedStack(
-      index: activeIndex + 1,
-      sizing: StackFit.expand,
-      children: [
-        KeyedSubtree(key: ValueKey(app.section), child: _page(app.section)),
-        for (final s in app.sessions)
-          TerminalPane(
-            key: ValueKey(s.id),
-            session: s,
-            active: s.id == app.activeSessionId,
-          ),
-      ],
     );
   }
 
@@ -160,46 +179,23 @@ class _HomeShellState extends State<HomeShell> {
 // ---------------------------------------------------------------- sidebar
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar();
+  const _Sidebar({required this.app});
+
+  final AppState app;
 
   @override
   Widget build(BuildContext context) {
-    final app = AppState.I;
     return Container(
       width: 216,
-      color: AppColors.sidebar,
+      color: AppColors.glassSidebar,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(18, 18, 18, 18),
-            child: Row(
-              children: [
-                Text(
-                  'Ur',
-                  style: TextStyle(
-                    fontFamily: kMonoFont,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.accent,
-                  ),
-                ),
-                Text(
-                  '.Terminal',
-                  style: TextStyle(
-                    fontFamily: kMonoFont,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.text,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 8),
           for (final s in Section.values)
             _NavItem(
               section: s,
-              selected: app.activeSessionId == null && app.section == s,
+              selected: app.section == s,
               trailing: s == Section.forwards
                   ? ListenableBuilder(
                       listenable: app.forwards,
@@ -290,52 +286,101 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------- tabs
+// ---------------------------------------------------------------- title bar
 
-class _TabStrip extends StatelessWidget {
-  const _TabStrip();
+class _TitleBarTabs extends StatelessWidget {
+  const _TitleBarTabs({required this.app});
+
+  final AppState app;
+
+  Future<void> _quickConnect(BuildContext context, Offset at) async {
+    final hosts = app.vault.hosts;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final picked = await showMenu<Object>(
+      context: context,
+      position: RelativeRect.fromRect(
+          at & const Size(1, 1), Offset.zero & overlay.size),
+      items: [
+        _item('local', Icons.laptop_mac, 'Local terminal'),
+        if (hosts.isNotEmpty) const PopupMenuDivider(),
+        for (final h in hosts.take(20))
+          _item(h, Icons.dns_outlined, h.displayName),
+      ],
+    );
+    if (picked == 'local') app.openLocal();
+    if (picked is Host) app.openHost(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final app = AppState.I;
+    final terminalMode = app.terminalActive;
     return Container(
-      height: 42,
-      color: AppColors.sidebar,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: WindowChrome.titleBarHeight,
+      decoration: const BoxDecoration(
+        color: AppColors.glassChrome,
+        border: Border(bottom: BorderSide(color: Color(0x33000000))),
+      ),
       child: Row(
         children: [
+          // Room for the traffic lights; also draggable.
+          const WindowDragArea(
+            child: SizedBox(
+                width: WindowChrome.trafficLightsInset, height: double.infinity),
+          ),
           _Tab(
-            label: 'Vault',
+            label: 'Vaults',
             icon: Icons.grid_view_rounded,
-            selected: app.activeSessionId == null,
+            selected: !terminalMode,
             onTap: app.showPages,
           ),
-          Expanded(
-            child: ListView(
+          Flexible(
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              children: [
-                for (final s in app.sessions)
-                  ListenableBuilder(
-                    listenable: s,
-                    builder: (_, _) => _Tab(
-                      label: s.title,
-                      dot: _statusColor(s.status),
-                      icon: s.isSsh ? null : Icons.laptop_mac,
-                      selected: s.id == app.activeSessionId,
-                      onTap: () => app.selectSession(s.id),
-                      onClose: () => app.closeSession(s.id),
+              child: Row(
+                children: [
+                  for (final s in app.sessions)
+                    ListenableBuilder(
+                      listenable: s,
+                      builder: (_, _) => _Tab(
+                        label: s.title,
+                        dot: _statusColor(s.status),
+                        icon: s.isSsh ? null : Icons.laptop_mac,
+                        selected: s.id == app.activeSessionId,
+                        onTap: () => app.selectSession(s.id),
+                        onClose: () => app.closeSession(s.id),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
+          ),
+          Builder(
+            builder: (ctx) => Tooltip(
+              message: 'New tab  (Cmd+T local)',
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.add, size: 18, color: AppColors.textMuted),
+                onPressed: () {
+                  final box = ctx.findRenderObject()! as RenderBox;
+                  _quickConnect(
+                      ctx, box.localToGlobal(box.size.bottomLeft(Offset.zero)));
+                },
+              ),
+            ),
+          ),
+          const Expanded(
+            child: WindowDragArea(child: SizedBox.expand()),
           ),
           Tooltip(
-            message: 'New local terminal  (Cmd+T)',
+            message: 'Command palette  (Cmd+K)',
             child: IconButton(
-              icon: const Icon(Icons.add, size: 18, color: AppColors.textMuted),
-              onPressed: app.openLocal,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.search, size: 17, color: AppColors.textMuted),
+              onPressed: () => showCommandPalette(context),
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
     );
@@ -354,6 +399,19 @@ class _TabStrip extends StatelessWidget {
     }
   }
 }
+
+PopupMenuItem<Object> _item(Object value, IconData icon, String label) =>
+    PopupMenuItem<Object>(
+      value: value,
+      height: 34,
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: AppColors.textMuted),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
+    );
 
 class _Tab extends StatefulWidget {
   const _Tab({
@@ -382,24 +440,29 @@ class _TabState extends State<_Tab> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
+    final isSession = w.onClose != null;
+    final borderColor = w.selected
+        ? (isSession ? AppColors.accent.withValues(alpha: 0.55) : AppColors.border)
+        : Colors.transparent;
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: w.onTap,
-        onTertiaryTapUp: w.onClose == null ? null : (_) => w.onClose!(),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-          padding: const EdgeInsets.only(left: 12, right: 6),
-          constraints: const BoxConstraints(maxWidth: 220),
+        onTertiaryTapUp: isSession ? (_) => w.onClose!() : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+          padding: EdgeInsets.only(left: 11, right: isSession ? 4 : 12),
+          constraints: const BoxConstraints(maxWidth: 230, minWidth: 64),
           decoration: BoxDecoration(
             color: w.selected
-                ? AppColors.surface2
+                ? (isSession ? AppColors.accentDim : AppColors.surface2)
                 : (_hover ? AppColors.surface : Colors.transparent),
             borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: w.selected ? AppColors.border : Colors.transparent,
-            ),
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -409,7 +472,9 @@ class _TabState extends State<_Tab> {
                 const SizedBox(width: 8),
               ],
               if (w.icon != null) ...[
-                Icon(w.icon, size: 14, color: AppColors.textMuted),
+                Icon(w.icon,
+                    size: 14,
+                    color: w.selected ? AppColors.text : AppColors.textMuted),
                 const SizedBox(width: 7),
               ],
               Flexible(
@@ -419,21 +484,26 @@ class _TabState extends State<_Tab> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12.5,
+                    fontWeight: w.selected ? FontWeight.w600 : FontWeight.w400,
                     color: w.selected ? AppColors.text : AppColors.textMuted,
                   ),
                 ),
               ),
-              SizedBox(
-                width: 22,
-                child: w.onClose != null && (_hover || w.selected)
-                    ? InkWell(
-                        borderRadius: BorderRadius.circular(4),
-                        onTap: w.onClose,
-                        child: const Icon(Icons.close,
-                            size: 13, color: AppColors.textMuted),
-                      )
-                    : null,
-              ),
+              if (isSession)
+                SizedBox(
+                  width: 24,
+                  child: (_hover || w.selected)
+                      ? InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: w.onClose,
+                          child: const Padding(
+                            padding: EdgeInsets.all(3),
+                            child: Icon(Icons.close,
+                                size: 13, color: AppColors.textMuted),
+                          ),
+                        )
+                      : null,
+                ),
             ],
           ),
         ),

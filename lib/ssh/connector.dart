@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/ids.dart';
 import '../core/keygen.dart';
@@ -126,13 +127,14 @@ class SshConnector {
           host.address,
           host.port,
           timeout: const Duration(seconds: 12),
-        );
+        ).timeout(const Duration(seconds: 15));
       } catch (e) {
         throw SshConnectException(
             'Cannot reach ${host.address}:${host.port} ($e)');
       }
     }
 
+    log?.call('TCP connected, negotiating keys');
     var passwordAttempts = 0;
     final endpoint = '${host.address}:${host.port}';
 
@@ -142,7 +144,13 @@ class SshConnector {
       identities: identities,
       keepAliveInterval: Duration(seconds: host.keepAliveSeconds.clamp(5, 300)),
       handshakeTimeout: const Duration(seconds: 20),
+      // Generous: covers the time the user spends in password / 2FA dialogs.
+      authTimeout: const Duration(minutes: 3),
       ident: 'UrTerminal_0.1',
+      printDebug: kDebugMode
+          ? (m) => debugPrint('[ssh ${host.address}] $m')
+          : null,
+      onAuthenticated: () => log?.call('Authenticated as $username'),
       onVerifyHostKey: (type, fingerprint) =>
           _verifyHostKey(endpoint, type, fingerprint),
       onPasswordRequest: () async {
@@ -199,6 +207,7 @@ class SshConnector {
     Uint8List fingerprintBytes,
   ) async {
     final fp = utf8.decode(fingerprintBytes, allowMalformed: true);
+    debugPrint('[ssh $endpoint] host key $type $fp');
     final known = vault.knownHostFor(endpoint);
     if (known != null && known.fingerprint == fp) return true;
 
@@ -254,6 +263,11 @@ class SshConnector {
     if (e is SSHAuthFailError) return 'Authentication failed: ${e.message}';
     if (e is SSHAuthAbortError) return 'Authentication aborted: ${e.message}';
     if (e is SSHHostkeyError) return 'Host key rejected';
+    if (e is SSHHandshakeError && e.message.contains('timed out')) {
+      return 'No SSH reply from server (TCP connected, but no SSH banner '
+          'within 20s). Check the port, or a VPN / proxy on this Mac that '
+          'intercepts the connection.';
+    }
     return e.toString();
   }
 }

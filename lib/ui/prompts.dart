@@ -9,7 +9,11 @@ class DialogPrompter implements SshPrompter {
 
   final GlobalKey<NavigatorState> navigatorKey;
 
-  BuildContext? get _ctx => navigatorKey.currentContext;
+  BuildContext? get _ctx {
+    final c = navigatorKey.currentContext;
+    if (c == null) debugPrint('[prompt] no navigator context');
+    return c;
+  }
 
   @override
   Future<bool> trustNewHostKey(

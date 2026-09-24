@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../core/vault_crypto.dart';
 import '../data/vault.dart';
 import 'theme.dart';
+import 'window_chrome.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -70,8 +71,17 @@ class _LockScreenState extends State<LockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: Center(
+      backgroundColor: AppColors.glassPage,
+      body: Stack(
+        children: [
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: WindowChrome.titleBarHeight,
+            child: WindowDragArea(child: SizedBox.expand()),
+          ),
+          Center(
         child: SizedBox(
           width: 380,
           child: Column(
@@ -162,6 +172,8 @@ class _LockScreenState extends State<LockScreen> {
             ],
           ),
         ),
+      ),
+        ],
       ),
     );
   }

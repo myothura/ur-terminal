@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:xterm2/xterm.dart';
 
 import '../app_state.dart';
+import '../data/prefs.dart';
 import '../ssh/terminal_session.dart';
 import 'home_shell.dart';
 import 'pages/snippets_page.dart';
@@ -20,6 +22,8 @@ class TerminalPane extends StatefulWidget {
 
 class _TerminalPaneState extends State<TerminalPane> {
   final _focus = FocusNode(debugLabel: 'terminal');
+
+  TerminalSession get s => widget.session;
 
   @override
   void initState() {
@@ -49,30 +53,89 @@ class _TerminalPaneState extends State<TerminalPane> {
     final picked = await pickAndRenderSnippet(context);
     if (picked != null) {
       AppState.I.runSnippet(picked.$1, picked.$2);
-      _focus.requestFocus();
     }
+    _focus.requestFocus();
+  }
+
+  String? get _selectedText {
+    final range = s.controller.selection;
+    if (range == null) return null;
+    final text = s.terminal.buffer.getText(range);
+    return text.isEmpty ? null : text;
+  }
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text != null && text.isNotEmpty) s.terminal.paste(text);
+    _focus.requestFocus();
+  }
+
+  Future<void> _contextMenu(Offset global) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final selected = _selectedText;
+    final connected = s.status == SessionStatus.connected;
+    final action = await showMenu<VoidCallback>(
+      context: context,
+      position: RelativeRect.fromRect(
+          global & const Size(1, 1), Offset.zero & overlay.size),
+      items: [
+        if (selected != null)
+          menuItem('Copy', Icons.copy, () {
+            Clipboard.setData(ClipboardData(text: selected));
+            s.controller.clearSelection();
+          }),
+        menuItem('Paste', Icons.content_paste, _paste),
+        const PopupMenuDivider(),
+        if (connected) menuItem('Run snippet...', Icons.code, _pickSnippet),
+        if (!connected && s.status != SessionStatus.connecting)
+          menuItem('Reconnect', Icons.refresh, s.start),
+        menuItem('Bigger text', Icons.text_increase,
+            () => AppState.I.zoomFont(1)),
+        menuItem('Smaller text', Icons.text_decrease,
+            () => AppState.I.zoomFont(-1)),
+        const PopupMenuDivider(),
+        menuItem('Close tab', Icons.close,
+            () => AppState.I.closeSession(s.id),
+            danger: true),
+      ],
+    );
+    action?.call();
+    if (mounted) _focus.requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.session;
-    return ColoredBox(
-      color: terminalTheme.background,
+    // No opaque backdrop: the terminal paints its own background at the
+    // user's opacity so the native window blur shows through (glass).
+    return SizedBox.expand(
       child: Column(
         children: [
           Expanded(
             child: RepaintBoundary(
-              child: TerminalView(
-                s.terminal,
-                controller: s.controller,
-                focusNode: _focus,
-                theme: terminalTheme,
-                textStyle: terminalStyle,
-                padding: const EdgeInsets.fromLTRB(10, 8, 6, 4),
-                cursorType: TerminalCursorType.block,
-                onKeyEvent: (node, event) => isAppShortcut(event)
-                    ? KeyEventResult.skipRemainingHandlers
-                    : KeyEventResult.ignored,
+              child: ListenableBuilder(
+                listenable: Listenable.merge(
+                    [Prefs.I.fontSize, Prefs.I.terminalOpacity]),
+                builder: (context, _) => TerminalView(
+                  s.terminal,
+                  controller: s.controller,
+                  focusNode: _focus,
+                  theme: terminalTheme,
+                  backgroundOpacity: Prefs.I.terminalOpacity.value,
+                  textStyle: TerminalStyle(
+                    fontSize: Prefs.I.fontSize.value,
+                    height: 1.35,
+                    fontFamily: kMonoFont,
+                    fontFamilyFallback: kMonoFallback,
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 10, 8),
+                  cursorType: TerminalCursorType.block,
+                  onSecondaryTapDown: (d, _) => _contextMenu(d.globalPosition),
+                  onKeyEvent: (node, event) => isAppShortcut(event)
+                      ? KeyEventResult.skipRemainingHandlers
+                      : KeyEventResult.ignored,
+                ),
               ),
             ),
           ),
@@ -112,11 +175,11 @@ class _StatusBar extends StatelessWidget {
       if (h.jumpHostId != null) detail += '  via jump host';
     }
     return Container(
-      height: 28,
+      height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: const BoxDecoration(
-        color: AppColors.sidebar,
-        border: Border(top: BorderSide(color: AppColors.border)),
+        color: AppColors.glassChrome,
+        border: Border(top: BorderSide(color: Color(0x33000000))),
       ),
       child: Row(
         children: [
@@ -130,7 +193,7 @@ class _StatusBar extends StatelessWidget {
               detail,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11.5,
+                fontSize: 11,
                 fontFamily: kMonoFont,
                 color: AppColors.textFaint,
               ),
@@ -138,16 +201,12 @@ class _StatusBar extends StatelessWidget {
           ),
           Text('${s.cols}x${s.rows}',
               style: const TextStyle(
-                  fontSize: 11.5,
-                  fontFamily: kMonoFont,
-                  color: AppColors.textFaint)),
+                  fontSize: 11, fontFamily: kMonoFont, color: AppColors.textFaint)),
           const SizedBox(width: 10),
           if (s.status == SessionStatus.connected)
-            _BarButton(
-                icon: Icons.code, label: 'Snippets', onTap: onSnippet)
+            _BarButton(icon: Icons.code, label: 'Snippets', onTap: onSnippet)
           else if (s.status != SessionStatus.connecting)
-            _BarButton(
-                icon: Icons.refresh, label: 'Reconnect', onTap: s.start),
+            _BarButton(icon: Icons.refresh, label: 'Reconnect', onTap: s.start),
         ],
       ),
     );
@@ -171,7 +230,7 @@ class _BarButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: Row(
           children: [
             Icon(icon, size: 13, color: AppColors.textMuted),

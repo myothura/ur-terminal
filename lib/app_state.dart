@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'data/models.dart';
+import 'data/prefs.dart';
 import 'data/vault.dart';
 import 'ssh/connector.dart';
 import 'ssh/forward_manager.dart';
@@ -42,6 +43,15 @@ class AppState extends ChangeNotifier {
   String? activeSessionId;
 
   bool paletteOpen = false;
+
+  /// Terminal font size, adjustable with Cmd+= / Cmd+-.
+  ValueNotifier<double> get fontSize => Prefs.I.fontSize;
+
+  void zoomFont(double delta) {
+    fontSize.value = (fontSize.value + delta).clamp(9.0, 28.0);
+  }
+
+  bool get terminalActive => active != null;
 
   TerminalSession? get active {
     for (final s in sessions) {

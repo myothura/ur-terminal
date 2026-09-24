@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'data/prefs.dart';
 import 'data/vault.dart';
 import 'ui/home_shell.dart';
 import 'ui/lock_screen.dart';
@@ -8,6 +9,7 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Prefs.I.load();
   runApp(const UrTerminalApp());
   await AppState.I.vault.init();
 }
@@ -38,7 +40,7 @@ class _VaultGate extends StatelessWidget {
       builder: (context, _) {
         switch (vault.status) {
           case VaultStatus.loading:
-            return const Scaffold(body: SizedBox.shrink());
+            return const SizedBox.shrink();
           case VaultStatus.empty:
           case VaultStatus.locked:
             return const LockScreen(key: ValueKey('lock'));

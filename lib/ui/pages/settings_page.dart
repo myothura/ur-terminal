@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
 import '../../core/vault_crypto.dart';
+import '../../data/prefs.dart';
 import '../../data/ssh_config_import.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -40,6 +41,49 @@ class SettingsPage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 32),
       children: [
         const PageHeader(title: 'Settings'),
+        _Group(
+          title: 'Appearance',
+          children: [
+            _Row(
+              icon: Icons.blur_on,
+              title: 'Terminal transparency',
+              subtitle: 'Glass blur shows the desktop behind the terminal',
+              action: SizedBox(
+                width: 220,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: Prefs.I.terminalOpacity,
+                  builder: (_, v, _) => Slider(
+                    value: v,
+                    min: 0.4,
+                    max: 1.0,
+                    divisions: 12,
+                    label: '${(v * 100).round()}%',
+                    onChanged: (x) => Prefs.I.terminalOpacity.value = x,
+                  ),
+                ),
+              ),
+            ),
+            _Row(
+              icon: Icons.format_size,
+              title: 'Terminal font size',
+              subtitle: 'JetBrains Mono with Myanmar fallback  (Cmd+= / Cmd+-)',
+              action: SizedBox(
+                width: 220,
+                child: ValueListenableBuilder<double>(
+                  valueListenable: Prefs.I.fontSize,
+                  builder: (_, v, _) => Slider(
+                    value: v,
+                    min: 10,
+                    max: 24,
+                    divisions: 28,
+                    label: v.toStringAsFixed(1),
+                    onChanged: (x) => Prefs.I.fontSize.value = x,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
         _Group(
           title: 'Security',
           children: [
