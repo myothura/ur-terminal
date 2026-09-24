@@ -18,11 +18,14 @@ enum SyncState { off, idle, syncing, conflict, error }
 /// the merged vault differs from what the cloud holds. Runs after local
 /// edits (debounced), on unlock and every few minutes.
 class SyncManager extends ChangeNotifier {
-  SyncManager._();
+  SyncManager._(this.vault);
 
-  static final SyncManager I = SyncManager._();
+  static final SyncManager I = SyncManager._(Vault.instance);
 
-  Vault get vault => Vault.instance;
+  @visibleForTesting
+  factory SyncManager.forTest(Vault vault) => SyncManager._(vault);
+
+  final Vault vault;
 
   SyncProvider? _provider;
   SyncProvider? get provider => _provider;
