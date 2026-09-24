@@ -49,6 +49,28 @@ class _TerminalPaneState extends State<TerminalPane> {
     super.dispose();
   }
 
+  /// Printable keys are left to macOS text input so input methods (ZawCode,
+  /// Pyidaungsu, Chinese/Japanese IMEs...) can compose them; the result
+  /// arrives through the terminal's text-input path. The terminal itself only
+  /// handles control keys (Enter, arrows, Ctrl-C, ...).
+  ///
+  /// [KeyEventResult.skipRemainingHandlers] stops xterm from consuming the
+  /// key while still reporting it as unhandled to the platform, which is what
+  /// hands it to the input method.
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (isAppShortcut(event)) return KeyEventResult.skipRemainingHandlers;
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    final k = HardwareKeyboard.instance;
+    if (k.isControlPressed || k.isMetaPressed) return KeyEventResult.ignored;
+    final ch = event.character;
+    if (ch == null || ch.isEmpty) return KeyEventResult.ignored;
+    final printable = ch.runes.every((r) =>
+        r >= 0x20 && r != 0x7F && !(r >= 0xF700 && r <= 0xF8FF));
+    return printable
+        ? KeyEventResult.skipRemainingHandlers
+        : KeyEventResult.ignored;
+  }
+
   Future<void> _pickSnippet() async {
     final picked = await pickAndRenderSnippet(context);
     if (picked != null) {
@@ -131,10 +153,11 @@ class _TerminalPaneState extends State<TerminalPane> {
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 12, 10, 8),
                   cursorType: TerminalCursorType.block,
+                  // xterm defaults to emailAddress, which makes macOS force a
+                  // Roman input source (Myanmar keyboard typed "asd").
+                  keyboardType: TextInputType.text,
                   onSecondaryTapDown: (d, _) => _contextMenu(d.globalPosition),
-                  onKeyEvent: (node, event) => isAppShortcut(event)
-                      ? KeyEventResult.skipRemainingHandlers
-                      : KeyEventResult.ignored,
+                  onKeyEvent: _onKeyEvent,
                 ),
               ),
             ),

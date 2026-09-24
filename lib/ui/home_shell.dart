@@ -345,7 +345,7 @@ class _TitleBarTabs extends StatelessWidget {
                       builder: (_, _) => _Tab(
                         label: s.title,
                         dot: _statusColor(s.status),
-                        icon: s.isSsh ? null : Icons.laptop_mac,
+                        icon: s.isSsh ? Icons.terminal : Icons.laptop_mac,
                         selected: s.id == app.activeSessionId,
                         onTap: () => app.selectSession(s.id),
                         onClose: () => app.closeSession(s.id),
@@ -434,16 +434,59 @@ class _Tab extends StatefulWidget {
   State<_Tab> createState() => _TabState();
 }
 
+/// Termius-style tab: no border, soft fill; the active session tab glows in
+/// the accent color.
 class _TabState extends State<_Tab> {
   bool _hover = false;
+
+  static const _activeText = Color(0xFF7CF2BE);
 
   @override
   Widget build(BuildContext context) {
     final w = widget;
     final isSession = w.onClose != null;
-    final borderColor = w.selected
-        ? (isSession ? AppColors.accent.withValues(alpha: 0.55) : AppColors.border)
-        : Colors.transparent;
+    final active = w.selected;
+
+    final Decoration deco;
+    if (active && isSession) {
+      deco = BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x553DDC97), Color(0x2A3DDC97)],
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x333DDC97), blurRadius: 10, spreadRadius: -2),
+        ],
+      );
+    } else {
+      deco = BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: active
+            ? const Color(0x2EFFFFFF)
+            : (_hover ? const Color(0x1FFFFFFF) : const Color(0x0FFFFFFF)),
+      );
+    }
+    final fg = active
+        ? (isSession ? _activeText : AppColors.text)
+        : (_hover ? AppColors.text : AppColors.textMuted);
+
+    // Leading slot: close button on hover/active, otherwise the status dot.
+    Widget? leading;
+    if (isSession) {
+      leading = SizedBox(
+        width: 18,
+        child: (_hover || active)
+            ? InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: w.onClose,
+                child: Icon(Icons.close, size: 13, color: fg),
+              )
+            : (w.dot == null ? null : Center(child: StatusDot(w.dot!, size: 7))),
+      );
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -453,61 +496,43 @@ class _TabState extends State<_Tab> {
         onTap: w.onTap,
         onTertiaryTapUp: isSession ? (_) => w.onClose!() : null,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
           margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
-          padding: EdgeInsets.only(left: 11, right: isSession ? 4 : 12),
-          constraints: const BoxConstraints(maxWidth: 230, minWidth: 64),
-          decoration: BoxDecoration(
-            color: w.selected
-                ? (isSession ? AppColors.accentDim : AppColors.surface2)
-                : (_hover ? AppColors.surface : Colors.transparent),
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: borderColor),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          width: isSession ? 196 : null,
+          decoration: deco,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (w.dot != null) ...[
-                StatusDot(w.dot!, size: 7),
-                const SizedBox(width: 8),
-              ],
-              if (w.icon != null) ...[
-                Icon(w.icon,
-                    size: 14,
-                    color: w.selected ? AppColors.text : AppColors.textMuted),
+              if (leading != null) ...[leading, const SizedBox(width: 6)],
+              if (!isSession && w.icon != null) ...[
+                Icon(w.icon, size: 14, color: fg),
                 const SizedBox(width: 7),
               ],
-              Flexible(
-                child: Text(
-                  w.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: w.selected ? FontWeight.w600 : FontWeight.w400,
-                    color: w.selected ? AppColors.text : AppColors.textMuted,
-                  ),
-                ),
-              ),
               if (isSession)
-                SizedBox(
-                  width: 24,
-                  child: (_hover || w.selected)
-                      ? InkWell(
-                          borderRadius: BorderRadius.circular(4),
-                          onTap: w.onClose,
-                          child: const Padding(
-                            padding: EdgeInsets.all(3),
-                            child: Icon(Icons.close,
-                                size: 13, color: AppColors.textMuted),
-                          ),
-                        )
-                      : null,
-                ),
+                Expanded(child: _label(w.label, active, fg))
+              else
+                _label(w.label, active, fg),
+              if (isSession && w.icon != null) ...[
+                const SizedBox(width: 6),
+                Icon(w.icon, size: 14, color: fg.withValues(alpha: 0.8)),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  static Widget _label(String text, bool active, Color fg) => Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+          color: fg,
+        ),
+      );
 }

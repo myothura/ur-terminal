@@ -460,11 +460,9 @@ packages:
   xterm2:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "7a4add3da8a163c9adff2b0fd554f3dfe6d1d9e4"
-      resolved-ref: "7a4add3da8a163c9adff2b0fd554f3dfe6d1d9e4"
-      url: "https://github.com/SoFluffyOS/xterm2.git"
-    source: git
+      path: "packages/xterm2"
+      relative: true
+    source: path
     version: "5.3.0"
   yaml:
     dependency: transitive

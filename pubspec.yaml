@@ -15,10 +15,10 @@ dependencies:
   dartssh2: ^4.1.0
 
   # Terminal emulator (maintained fork of xterm.dart), pinned to a reviewed commit
+  # Vendored xterm2 (MIT) with Ur.Terminal patches for Myanmar shaping.
+  # Upstream: https://github.com/SoFluffyOS/xterm2 @ 7a4add3
   xterm2:
-    git:
-      url: https://github.com/SoFluffyOS/xterm2.git
-      ref: 7a4add3da8a163c9adff2b0fd554f3dfe6d1d9e4
+    path: packages/xterm2
 
   # Local shell PTY (maintained fork of flutter_pty), pinned to a reviewed commit
   flutter_pty2:

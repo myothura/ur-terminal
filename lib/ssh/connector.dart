@@ -147,9 +147,7 @@ class SshConnector {
       // Generous: covers the time the user spends in password / 2FA dialogs.
       authTimeout: const Duration(minutes: 3),
       ident: 'UrTerminal_0.1',
-      printDebug: kDebugMode
-          ? (m) => debugPrint('[ssh ${host.address}] $m')
-          : null,
+      printDebug: kDebugMode ? (m) => _debug(host.address, m) : null,
       onAuthenticated: () => log?.call('Authenticated as $username'),
       onVerifyHostKey: (type, fingerprint) =>
           _verifyHostKey(endpoint, type, fingerprint),
@@ -257,6 +255,19 @@ class SshConnector {
       }
     }
     return answers;
+  }
+
+  /// Handshake / auth diagnostics only; per-packet chatter is dropped.
+  static void _debug(String address, String? m) {
+    if (m == null) return;
+    if (m.contains('SSHChannel') ||
+        m.contains('_processPackets') ||
+        m.contains('_consumeEncryptedPacket') ||
+        m.contains('_sendWindowAdjust') ||
+        m.contains('_uploadLoop')) {
+      return;
+    }
+    debugPrint('[ssh $address] $m');
   }
 
   static String _describe(Object e) {
