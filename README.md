@@ -62,12 +62,12 @@ Requires Flutter 3.35+ and Xcode.
 ./tool/run.command     # flutter run -d macos
 ```
 
-## GitHub sync setup (once per fork)
+## GitHub sync
 
-Create an OAuth App at https://github.com/settings/applications/new, tick
-**Enable Device Flow**, and put its Client ID in
-`lib/sync/github_provider.dart` (`kGitHubClientId`). Client IDs are public; no
-client secret is used.
+Uses the Ur.Terminal OAuth App (Device Flow, `repo` scope; no client secret).
+Forks can register their own OAuth App with **Enable Device Flow** ticked and
+**Expire user access tokens** unticked, then set `kGitHubClientId` in
+`lib/sync/github_provider.dart`.
 
 ## Third-party code
 

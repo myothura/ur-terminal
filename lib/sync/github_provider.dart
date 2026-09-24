@@ -8,7 +8,7 @@ import 'sync_provider.dart';
 /// public by design (no secret is used by the device flow). Register one at
 /// https://github.com/settings/applications/new and tick "Enable Device Flow".
 /// Can be overridden in Settings for forks.
-const kGitHubClientId = '';
+const kGitHubClientId = 'Ov23liCX0CsYkotmgfDG';
 
 const _api = 'https://api.github.com';
 const _repoName = 'ur-terminal-vault';
