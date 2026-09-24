@@ -85,6 +85,9 @@ class Vault extends ChangeNotifier {
 
   String get filePath => _file.path;
 
+  /// Application support directory holding the vault and device files.
+  String get supportDir => _file.parent.path;
+
   // ---------------------------------------------------------------- lifecycle
 
   Future<void> init() async {
@@ -271,6 +274,47 @@ class Vault extends ChangeNotifier {
       _schedulePersist();
     }
     return changed;
+  }
+
+  /// Number of non-deleted records.
+  int get liveRecordCount => _records.length;
+
+  /// True when [remote] was encrypted with the same data key as this vault
+  /// (i.e. it is a copy of this vault, possibly edited on another device).
+  bool sharesKeyWith(Map<String, dynamic> remote) {
+    final dek = remote['dek'];
+    return dek is Map && jsonEncode(dek) == jsonEncode(_wrappedDek!.toJson());
+  }
+
+  /// Replaces this vault with [remote] (a vault created on another device),
+  /// unlocking it with that vault's master password.
+  /// Throws [WrongPasswordException] on a bad password.
+  Future<void> adoptRemote(Map<String, dynamic> remote, String password) async {
+    final kdf = KdfParams.fromJson(remote['kdf'] as Map<String, dynamic>);
+    final wrapped = SealedBox.fromJson(remote['dek'] as Map<String, dynamic>);
+    final kek = await VaultCrypto.deriveKek(password, kdf);
+    final dek = await VaultCrypto.unwrapKey(kek, wrapped);
+    _loadHeader(remote);
+    _dek = dek;
+    await _decryptAll();
+    _status = VaultStatus.unlocked;
+    await _persistNow();
+    _changed();
+  }
+
+  /// Seal / open small device-local secrets (e.g. sync tokens) with the
+  /// vault data key.
+  Future<SealedBox> sealLocal(String text) {
+    _requireUnlocked();
+    return VaultCrypto.seal(_dek!, utf8.encode(text),
+        aad: utf8.encode('ur.local.v1'));
+  }
+
+  Future<String> openLocal(SealedBox box) async {
+    _requireUnlocked();
+    final bytes = await VaultCrypto.open(_dek!, box,
+        aad: utf8.encode('ur.local.v1'));
+    return utf8.decode(bytes);
   }
 
   // ---------------------------------------------------------------- persistence

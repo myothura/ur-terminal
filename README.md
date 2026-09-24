@@ -2,9 +2,21 @@
 
 Free, open source SSH client for macOS, built with Flutter. Hosts, keychain,
 port forwarding, snippets and an end-to-end encrypted vault that syncs through
-your own Google Drive, GitHub or iCloud. iOS companion app planned.
+your own iCloud Drive, Google Drive or a private GitHub repo. No server, no
+account, no subscription. iOS companion app planned.
 
 ## Features (v0.1)
+
+- **Sync** without a server: iCloud Drive / Google Drive / Dropbox folder, or a
+  private GitHub repo (`<you>/ur-terminal-vault`, one commit per sync). Records
+  merge per item, so edits on two Macs do not overwrite each other
+- **Import from Termius** (hosts, ports, users, passwords, keys, groups, tags,
+  snippets, tunnels, known hosts) via
+  [termius-local-export](https://github.com/ZeroP27/termius-local-export)
+- **Myanmar and other complex scripts**: input methods (ZawCode, Pyidaungsu,
+  CJK IMEs) and cross-cell shaping, so Burmese renders correctly in the shell
+- **Glass UI**: native macOS blur, Termius-style tabs in the title bar,
+  JetBrains Mono, adjustable transparency
 
 - **Hosts** with groups, tags, search, identities and ProxyJump chains
 - **Terminal** tabs (SSH and local shell), xterm-256color, auto-reconnect on Enter
@@ -50,10 +62,24 @@ Requires Flutter 3.35+ and Xcode.
 ./tool/run.command     # flutter run -d macos
 ```
 
+## GitHub sync setup (once per fork)
+
+Create an OAuth App at https://github.com/settings/applications/new, tick
+**Enable Device Flow**, and put its Client ID in
+`lib/sync/github_provider.dart` (`kGitHubClientId`). Client IDs are public; no
+client secret is used.
+
+## Third-party code
+
+- `packages/xterm2`: vendored [xterm2](https://github.com/SoFluffyOS/xterm2)
+  (MIT) with patches for Myanmar shaping and input-method echo
+- `assets/fonts`: [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)
+  (SIL OFL 1.1)
+
 ## Roadmap
 
-- Phase 2: Google Drive / GitHub / iCloud sync, SFTP browser, Touch ID unlock,
-  menu bar tunnels, split panes
+- Phase 2: Google Sign-In (Drive appData) and Sign in with Apple (CloudKit)
+  sync, SFTP browser, Touch ID unlock, menu bar tunnels, split panes
 - Phase 3: iOS app
 - Release: Developer ID signing + notarization, Sparkle auto-update, Homebrew cask
 

@@ -6,6 +6,7 @@ import '../../data/prefs.dart';
 import '../../data/ssh_config_import.dart';
 import '../theme.dart';
 import 'hosts_page.dart';
+import 'sync_section.dart';
 import '../widgets.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -108,28 +109,15 @@ class SettingsPage extends StatelessWidget {
             ),
           ],
         ),
-        _Group(
-          title: 'Sync',
-          children: const [
-            _Row(
-              icon: Icons.cloud_outlined,
-              title: 'Google Drive',
-              subtitle: 'Hidden app folder, end-to-end encrypted',
-              action: Badge2('next build'),
-            ),
-            _Row(
-              icon: Icons.merge_type,
-              title: 'GitHub',
-              subtitle: 'Private repo, version history per sync',
-              action: Badge2('next build'),
-            ),
-            _Row(
-              icon: Icons.apple,
-              title: 'iCloud',
-              subtitle: 'Sign in with Apple, shared with iOS app',
-              action: Badge2('next build'),
-            ),
-          ],
+        SyncSection(
+          group: (title, children) => _Group(title: title, children: children),
+          row: ({
+            required IconData icon,
+            required String title,
+            required String subtitle,
+            Widget? action,
+          }) =>
+              _Row(icon: icon, title: title, subtitle: subtitle, action: action),
         ),
         _Group(
           title: 'Data',

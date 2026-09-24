@@ -8,6 +8,7 @@ import 'data/vault.dart';
 import 'ssh/connector.dart';
 import 'ssh/forward_manager.dart';
 import 'ssh/terminal_session.dart';
+import 'sync/sync_manager.dart';
 import 'ui/prompts.dart';
 
 enum Section {
@@ -137,6 +138,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> onUnlocked() async {
     await forwards.startAutoRules();
+    unawaited(SyncManager.I.start());
   }
 
   Future<void> lock() async {
@@ -144,6 +146,7 @@ class AppState extends ChangeNotifier {
       await closeSession(s.id);
     }
     await forwards.stopAll();
+    await SyncManager.I.stop();
     section = Section.hosts;
     await vault.lock();
     notifyListeners();
