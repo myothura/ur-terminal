@@ -502,7 +502,7 @@ class TerminalPainter {
   double? _latinBaselineCellHeight;
 
   /// Baseline of regular (Latin) glyphs measured from the top of a cell.
-  double _latinBaseline() {
+  double latinBaseline() {
     if (_latinBaselineValue != null &&
         _latinBaselineCellHeight == _cellSize.height) {
       return _latinBaselineValue!;
@@ -551,7 +551,7 @@ class TerminalPainter {
     }
     // Sit Myanmar on the same baseline as the Latin text in the cell.
     // Centering pushed the tall Myanmar glyphs up and clipped their tops.
-    final dy = _latinBaseline() -
+    final dy = latinBaseline() -
         tp.computeDistanceToActualBaseline(TextBaseline.alphabetic);
     canvas.save();
     canvas.translate(offset.dx, offset.dy + dy);
